@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="32dp"
+    android:background="@drawable/bg_attachment_chip"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="4dp"
+    android:layout_marginEnd="6dp">
+
+    <ImageView
+        android:id="@+id/ivChipIcon"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:src="@drawable/ic_description"
+        app:tint="@color/primary_cyan" />
+
+    <TextView
+        android:id="@+id/tvChipName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:maxWidth="130dp"
+        android:ellipsize="middle"
+        android:singleLine="true"
+        android:textColor="#FFFFFF"
+        android:textSize="11.5sp"
+        tools:text="Document.pdf" />
+
+    <TextView
+        android:id="@+id/tvChipSize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:textColor="@color/hud_text_secondary"
+        android:textSize="10sp"
+        tools:text="14 KB" />
+
+    <ImageButton
+        android:id="@+id/btnChipRemove"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Remove attachment"
+        android:padding="5dp"
+        android:src="@drawable/ic_close"
+        app:tint="@color/hud_text_secondary" />
+
+</LinearLayout>

@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="8dp"
+    android:viewportWidth="120"
+    android:viewportHeight="8">
+    <!-- Subtle outer bracket lines -->
+    <path
+        android:strokeColor="#184D5F"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M5,1 L20,7 L100,7 L115,1" />
+    <!-- Bright cyan glowing center notch -->
+    <path
+        android:strokeColor="#00F2FE"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M48,7 L72,7" />
+</vector>

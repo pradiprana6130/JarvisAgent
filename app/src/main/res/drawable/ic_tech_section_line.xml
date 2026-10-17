@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="12dp"
+    android:viewportWidth="200"
+    android:viewportHeight="12">
+    <!-- Subtle horizontal tech line -->
+    <path
+        android:strokeColor="#1F3A4D"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:pathData="M0,6 L180,6 L186,2 L198,2" />
+    <!-- Cyan accent node -->
+    <path
+        android:strokeColor="#00F2FE"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M165,6 L180,6" />
+    <path
+        android:fillColor="#00F2FE"
+        android:pathData="M186,2m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+</vector>

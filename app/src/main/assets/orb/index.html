@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JARVIS Reactor Orb</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+<canvas id="orbCanvas"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('orbCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let width = 300;
+  let height = 300;
+  let dpr = window.devicePixelRatio || 1;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    width = rect.width || window.innerWidth || 300;
+    height = rect.height || window.innerHeight || 300;
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  setTimeout(resize, 40);
+
+  // Math helper utilities
+  const PI = Math.PI;
+  const TWO_PI = Math.PI * 2;
+  const DEG2RAD = Math.PI / 180;
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  // State configurations
+  const STATES = {
+    offline: {
+      brightness: 0.22,
+      coreGlow: 0.18,
+      outerSpeed: 0.0004,
+      innerSpeed: -0.0005,
+      pulseSpeed: 0.010,
+      radarAlpha: 0.0,
+      radarSpeed: 0.0,
+      amberIntensity: 0.15,
+      particleSpeed: 0.15,
+      errColor: 0.0,
+      executing: 0.0
+    },
+    sleep: {
+      brightness: 0.35,
+      coreGlow: 0.28,
+      outerSpeed: 0.0008,
+      innerSpeed: -0.0010,
+      pulseSpeed: 0.015,
+      radarAlpha: 0.0,
+      radarSpeed: 0.0,
+      amberIntensity: 0.35,
+      particleSpeed: 0.3,
+      errColor: 0.0,
+      executing: 0.0
+    },
+    idle: {
+      brightness: 0.90,
+      coreGlow: 0.65,
+      outerSpeed: 0.0022,
+      innerSpeed: -0.0032,
+      pulseSpeed: 0.025,
+      radarAlpha: 0.0,
+      radarSpeed: 0.0,
+      amberIntensity: 0.85,
+      particleSpeed: 0.7,
+      errColor: 0.0,
+      executing: 0.0
+    },
+    wake_up: {
+      brightness: 1.25,
+      coreGlow: 1.10,
+      outerSpeed: 0.008,
+      innerSpeed: -0.012,
+      pulseSpeed: 0.06,
+      radarAlpha: 0.3,
+      radarSpeed: 0.04,
+      amberIntensity: 1.0,
+      particleSpeed: 1.5,
+      errColor: 0.0,
+      executing: 0.0
+    },
+    listening: {
+      brightness: 1.05,
+      coreGlow: 0.85,
+      outerSpeed: 0.0030,
+      innerSpeed: -0.0042,
+      pulseSpeed: 0.045,
+      radarAlpha: 0.0,
+      radarSpeed: 0.0,
+      amberIntensity: 0.95,
+      particleSpeed: 1.2,
+      errColor: 0.0,
+      executing: 0.0
+    },
+    thinking: {
+      brightness: 1.10,
+      coreGlow: 0.90,
+      outerSpeed: 0.016,
+      innerSpeed: -0.024,
+      pulseSpeed: 0.075,
+      radarAlpha: 0.85,
+      radarSpeed: 0.065,
+      amberIntensity: 1.1,
+      particleSpeed: 2.2,
+      errColor: 0.0,
+      executing: 0.0
+    },
+    executing: {
+      brightness: 1.15,
+      coreGlow: 0.95,
+      outerSpeed: 0.012,
+      innerSpeed: -0.016,
+      pulseSpeed: 0.060,
+      radarAlpha: 0.40,
+      radarSpeed: 0.035,
+      amberIntensity: 1.2,
+      particleSpeed: 1.8,
+      errColor: 0.0,
+      executing: 1.0
+    },
+    speaking: {
+      brightness: 1.15,
+      coreGlow: 0.95,
+      outerSpeed: 0.0045,
+      innerSpeed: -0.0060,
+      pulseSpeed: 0.055,
+      radarAlpha: 0.0,
+      radarSpeed: 0.0,
+      amberIntensity: 1.0,
+      particleSpeed: 1.6,
+      errColor: 0.0,
+      executing: 0.0
+    },
+    error: {
+      brightness: 1.05,
+      coreGlow: 0.95,
+      outerSpeed: 0.002,
+      innerSpeed: -0.003,
+      pulseSpeed: 0.12,
+      radarAlpha: 0.0,
+      radarSpeed: 0.0,
+      amberIntensity: 1.4,
+      particleSpeed: 1.0,
+      errColor: 1.0,
+      executing: 0.0
+    }
+  };
+
+  let currentState = 'offline';
+  let curProps = { ...STATES.offline };
+  let targetProps = { ...STATES.offline };
+
+  let rawAudioLevel = 0.0;
+  let targetAudioLevel = 0.0;
+  let smoothedAudio = 0.0;
+  let time = 0;
+
+  // Rotational angles
+  let outerAngle = 0;
+  let innerAngle = 0;
+  let radarAngle = 0;
+
+  // Wake-up activation animation timer (0.0 -> 1.0)
+  let wakeProgress = 1.0;
+  let isWakingUp = false;
+
+  // Error auto-recovery timer
+  let errorTimer = 0;
+
+  // 24 ambient floating plasma motes
+  const PARTICLE_COUNT = 24;
+  const particles = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      angle: Math.random() * TWO_PI,
+      distRatio: 0.12 + Math.random() * 0.46,
+      size: 1.2 + Math.random() * 2.0,
+      speed: (0.004 + Math.random() * 0.008) * (Math.random() > 0.4 ? 1 : -1),
+      alpha: 0.3 + Math.random() * 0.6
+    });
+  }
+
+  // Bridge APIs called by Android
+  window.setOrbState = function(stateName, level) {
+    const key = (stateName || 'idle').toLowerCase().trim();
+    const config = STATES[key] || STATES.idle;
+    currentState = key;
+    targetProps = config;
+
+    if (key === 'wake_up') {
+      wakeProgress = 0.0;
+      isWakingUp = true;
+    } else {
+      isWakingUp = false;
+      wakeProgress = 1.0;
+    }
+
+    if (key === 'error') {
+      errorTimer = 100; // ~1.6 seconds at 60fps
+    }
+
+    if (typeof level === 'number') {
+      targetAudioLevel = clamp(level, 0, 1);
+    }
+  };
+
+  window.setAudioLevel = function(level) {
+    if (typeof level === 'number') {
+      targetAudioLevel = clamp(level, 0, 1);
+    }
+  };
+
+  // Helper to draw text along an arc
+  function drawArcText(text, cx, cy, radius, startAngleRad, letterSpacingRad, color, font) {
+    ctx.save();
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    let currentAngle = startAngleRad;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const charX = cx + Math.cos(currentAngle) * radius;
+      const charY = cy + Math.sin(currentAngle) * radius;
+      ctx.save();
+      ctx.translate(charX, charY);
+      ctx.rotate(currentAngle + Math.PI / 2);
+      ctx.fillText(char, 0, 0);
+      ctx.restore();
+      currentAngle += letterSpacingRad;
+    }
+    ctx.restore();
+  }
+
+  // Main Render Loop
+  function render() {
+    time += 1;
+
+    // Smooth audio reactivity lerp (fast attack, smooth release)
+    smoothedAudio = lerp(smoothedAudio, targetAudioLevel, 0.28);
+    targetAudioLevel = lerp(targetAudioLevel, 0, 0.06);
+
+    // Error auto-recovery handling
+    if (errorTimer > 0) {
+      errorTimer--;
+      if (errorTimer === 0 && currentState === 'error') {
+        window.setOrbState('idle');
+      }
+    }
+
+    // Wake-up progression (0 to 1 over ~50 frames / ~800ms)
+    if (isWakingUp) {
+      wakeProgress += 0.022;
+      if (wakeProgress >= 1.0) {
+        wakeProgress = 1.0;
+        isWakingUp = false;
+        // Settle smoothly into LISTENING mode
+        window.setOrbState('listening');
+      }
+    }
+
+    // Smooth state property interpolation
+    const lerpRate = 0.08;
+    curProps.brightness = lerp(curProps.brightness, targetProps.brightness, lerpRate);
+    curProps.coreGlow = lerp(curProps.coreGlow, targetProps.coreGlow, lerpRate);
+    curProps.outerSpeed = lerp(curProps.outerSpeed, targetProps.outerSpeed, lerpRate);
+    curProps.innerSpeed = lerp(curProps.innerSpeed, targetProps.innerSpeed, lerpRate);
+    curProps.pulseSpeed = lerp(curProps.pulseSpeed, targetProps.pulseSpeed, lerpRate);
+    curProps.radarAlpha = lerp(curProps.radarAlpha, targetProps.radarAlpha, lerpRate);
+    curProps.radarSpeed = lerp(curProps.radarSpeed, targetProps.radarSpeed, lerpRate);
+    curProps.amberIntensity = lerp(curProps.amberIntensity, targetProps.amberIntensity, lerpRate);
+    curProps.particleSpeed = lerp(curProps.particleSpeed, targetProps.particleSpeed, lerpRate);
+    curProps.errColor = lerp(curProps.errColor, targetProps.errColor, lerpRate);
+    curProps.executing = lerp(curProps.executing, targetProps.executing, lerpRate);
+
+    // Ring rotations
+    outerAngle += curProps.outerSpeed;
+    innerAngle += curProps.innerSpeed;
+    radarAngle += curProps.radarSpeed;
+
+    // Clear Canvas
+    ctx.clearRect(0, 0, width, height);
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const baseR = Math.min(width, height) * 0.44;
+
+    const b = curProps.brightness;
+    const err = curProps.errColor;
+    const pulse = Math.sin(time * curProps.pulseSpeed);
+    const audioDyn = smoothedAudio * 0.35;
+
+    // Dynamic color calculation based on normal cyan vs alert amber/red
+    // Primary Cyan: [0, 242, 254], Alert Red: [255, 35, 65]
+    const rCyan = Math.round(lerp(0, 255, err));
+    const gCyan = Math.round(lerp(242, 45, err));
+    const bCyan = Math.round(lerp(254, 65, err));
+    const primaryCyan = `rgb(${rCyan}, ${gCyan}, ${bCyan})`;
+    function cyanAlpha(a) { return `rgba(${rCyan}, ${gCyan}, ${bCyan}, ${clamp(a * b, 0, 1)})`; }
+
+    // Amber Color: [255, 183, 3]
+    const rAmb = Math.round(lerp(255, 255, err));
+    const gAmb = Math.round(lerp(183, 70, err));
+    const bAmb = Math.round(lerp(3, 10, err));
+    function amberAlpha(a) { return `rgba(${rAmb}, ${gAmb}, ${bAmb}, ${clamp(a * b * curProps.amberIntensity, 0, 1)})`; }
+
+    // Deep teal color
+    function tealAlpha(a) { return `rgba(5, 38, 55, ${clamp(a * b, 0, 1)})`; }
+
+    // -------------------------------------------------------------
+    // LAYER 1: Background Atmospheric Glow & Subtle Tech Grid
+    // -------------------------------------------------------------
+    const atmGrad = ctx.createRadialGradient(cx, cy, baseR * 0.1, cx, cy, baseR * 1.15);
+    atmGrad.addColorStop(0, cyanAlpha(0.20 + audioDyn * 0.15));
+    atmGrad.addColorStop(0.5, tealAlpha(0.35));
+    atmGrad.addColorStop(1, 'rgba(1, 4, 8, 0)');
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseR * 1.15, 0, TWO_PI);
+    ctx.fillStyle = atmGrad;
+    ctx.fill();
+
+    // Subtle Hexagonal / Matrix Pattern in the background
+    const hexRadius = baseR * 0.11;
+    const hexW = Math.sqrt(3) * hexRadius;
+    const hexH = 2 * hexRadius * 0.75;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, baseR * 1.05, 0, TWO_PI);
+    ctx.clip();
+    ctx.strokeStyle = cyanAlpha(0.045);
+    ctx.lineWidth = 0.8;
+    for (let hy = cy - baseR * 1.1; hy <= cy + baseR * 1.1; hy += hexH) {
+      for (let hx = cx - baseR * 1.1; hx <= cx + baseR * 1.1; hx += hexW) {
+        ctx.beginPath();
+        for (let k = 0; k < 6; k++) {
+          const a = (k * 60 + 30) * DEG2RAD;
+          const px = hx + hexRadius * 0.5 * Math.cos(a);
+          const py = hy + hexRadius * 0.5 * Math.sin(a);
+          if (k === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    // -------------------------------------------------------------
+    // LAYER 2: Outermost Notched Reactor Rim (Mechanical Housing)
+    // -------------------------------------------------------------
+    const rHullOut = baseR * 0.98;
+    const rHullIn = baseR * 0.87;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(outerAngle * 0.25);
+
+    // Draw dark metallic housing ring with 4 industrial mounting brackets
+    ctx.beginPath();
+    ctx.arc(0, 0, rHullOut, 0, TWO_PI);
+    ctx.arc(0, 0, rHullIn, TWO_PI, 0, true);
+    ctx.fillStyle = tealAlpha(0.75);
+    ctx.fill();
+
+    // Heavy stepped brackets / ear tabs at 4 quadrants
+    const tabAngles = [0.25 * PI, 0.75 * PI, 1.25 * PI, 1.75 * PI];
+    tabAngles.forEach(ang => {
+      ctx.save();
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.arc(0, 0, rHullOut + baseR * 0.04, -0.15, 0.15);
+      ctx.arc(0, 0, rHullIn, 0.15, -0.15, true);
+      ctx.closePath();
+      ctx.fillStyle = tealAlpha(0.95);
+      ctx.fill();
+      ctx.strokeStyle = cyanAlpha(0.65);
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Industrial notch cutout
+      ctx.beginPath();
+      ctx.rect(rHullOut - baseR * 0.02, -baseR * 0.025, baseR * 0.045, baseR * 0.05);
+      ctx.strokeStyle = cyanAlpha(0.85);
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Rim neon outline borders
+    ctx.beginPath();
+    ctx.arc(0, 0, rHullOut, 0, TWO_PI);
+    ctx.strokeStyle = cyanAlpha(0.6);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, rHullIn, 0, TWO_PI);
+    ctx.strokeStyle = cyanAlpha(0.45);
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.restore();
+
+    // -------------------------------------------------------------
+    // LAYER 3: Outer HUD Status Arcs (SIGNAL, WIFI, Status Blocks)
+    // -------------------------------------------------------------
+    const rStatus = baseR * 0.84;
+    const rStatusThick = baseR * 0.042;
+
+    // Upper-left cyan "SIGNAL" block segments
+    const signalBlocks = 4;
+    const sigStart = 195 * DEG2RAD;
+    const sigSpan = 13 * DEG2RAD;
+    const sigGap = 4 * DEG2RAD;
+
+    for (let i = 0; i < signalBlocks; i++) {
+      const a1 = sigStart + i * (sigSpan + sigGap);
+      const a2 = a1 + sigSpan;
+      // Pulse animation in thinking / speaking / listening
+      let blockLit = 0.55 + 0.35 * Math.sin(time * 0.08 + i);
+      if (currentState === 'thinking') {
+        blockLit = ((time * 0.2 + i) % 4 < 2) ? 1.0 : 0.3;
+      }
+      ctx.beginPath();
+      ctx.arc(cx, cy, rStatus + rStatusThick * 0.5, a1, a2);
+      ctx.arc(cx, cy, rStatus - rStatusThick * 0.5, a2, a1, true);
+      ctx.closePath();
+      ctx.fillStyle = cyanAlpha(blockLit * 0.85);
+      ctx.fill();
+      ctx.strokeStyle = cyanAlpha(0.9);
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+    }
+
+    // "SIGNAL" micro HUD label at ~270° (top)
+    drawArcText('SIGNAL', cx, cy, rStatus + rStatusThick * 0.1, 260 * DEG2RAD, 4.5 * DEG2RAD, cyanAlpha(0.85), 'bold 9px monospace');
+
+    // Lower-left amber "WIFI" block segments
+    const wifiBlocks = 4;
+    const wifiStart = 135 * DEG2RAD;
+    const wifiSpan = 11 * DEG2RAD;
+    const wifiGap = 4 * DEG2RAD;
+
+    for (let i = 0; i < wifiBlocks; i++) {
+      const a1 = wifiStart + i * (wifiSpan + wifiGap);
+      const a2 = a1 + wifiSpan;
+      let wLit = 0.6 + 0.35 * Math.sin(time * 0.07 - i);
+      if (currentState === 'executing') {
+        wLit = ((time * 0.25 + i) % 4 < 2) ? 1.0 : 0.25;
+      }
+      ctx.beginPath();
+      ctx.arc(cx, cy, rStatus + rStatusThick * 0.5, a1, a2);
+      ctx.arc(cx, cy, rStatus - rStatusThick * 0.5, a2, a1, true);
+      ctx.closePath();
+      ctx.fillStyle = amberAlpha(wLit * 0.9);
+      ctx.fill();
+      ctx.strokeStyle = amberAlpha(0.95);
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+    }
+
+    // "WIFI" micro HUD label
+    drawArcText('WIFI', cx, cy, rStatus, 185 * DEG2RAD, 5.5 * DEG2RAD, amberAlpha(0.9), 'bold 8px monospace');
+
+    // -------------------------------------------------------------
+    // LAYER 4: The Signature Amber Arc Gauge ("ENERGY LEVEL") & Mechanical Track
+    // -------------------------------------------------------------
+    const rEnergy = baseR * 0.70;
+    const rEnergyW = baseR * 0.065;
+
+    // Right Side: Segmented Amber Arc Gauge (from ~285° clockwise through 0° to ~105°)
+    const numAmberSegments = 12;
+    const amberStartAngle = 285 * DEG2RAD;
+    const totalAmberSpan = 180 * DEG2RAD;
+    const amberSegSpan = (totalAmberSpan / numAmberSegments) - (2.5 * DEG2RAD);
+
+    ctx.save();
+    for (let i = 0; i < numAmberSegments; i++) {
+      const a1 = amberStartAngle + i * (amberSegSpan + 2.5 * DEG2RAD);
+      const a2 = a1 + amberSegSpan;
+
+      // React to audio or state
+      let segIntensity = 0.75 + 0.25 * Math.sin(time * 0.05 + i * 0.4);
+      if (currentState === 'listening' || currentState === 'speaking') {
+        const threshold = (numAmberSegments - i) / numAmberSegments;
+        segIntensity = (smoothedAudio * 1.5 >= threshold) ? 1.1 : 0.35;
+      } else if (currentState === 'thinking') {
+        segIntensity = ((Math.floor(time * 0.3) + i) % numAmberSegments < 4) ? 1.2 : 0.4;
+      } else if (currentState === 'executing') {
+        segIntensity = ((time * 0.15 + i) % 3 < 1.5) ? 1.15 : 0.5;
+      }
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, rEnergy + rEnergyW * 0.5, a1, a2);
+      ctx.arc(cx, cy, rEnergy - rEnergyW * 0.5, a2, a1, true);
+      ctx.closePath();
+
+      ctx.fillStyle = amberAlpha(segIntensity * 0.95);
+      ctx.fill();
+      ctx.strokeStyle = amberAlpha(segIntensity);
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Curved text "ENERGY LEVEL" below the amber segments
+    drawArcText('ENERGY LEVEL', cx, cy, rEnergy - rEnergyW * 1.35, 76 * DEG2RAD, 4.2 * DEG2RAD, amberAlpha(0.95), 'bold 9px monospace');
+
+    // Left Side: Counterpart Mechanical Cyan Track
+    const rMech = rEnergy;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, rMech + rEnergyW * 0.4, 115 * DEG2RAD, 275 * DEG2RAD);
+    ctx.arc(cx, cy, rMech - rEnergyW * 0.4, 275 * DEG2RAD, 115 * DEG2RAD, true);
+    ctx.closePath();
+    ctx.fillStyle = tealAlpha(0.65);
+    ctx.fill();
+    ctx.strokeStyle = cyanAlpha(0.75);
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // Three sensor dots in an arc on the cyan track
+    const dotAngles = [145 * DEG2RAD, 153 * DEG2RAD, 161 * DEG2RAD, 230 * DEG2RAD, 238 * DEG2RAD, 246 * DEG2RAD];
+    dotAngles.forEach(da => {
+      const dotX = cx + Math.cos(da) * rMech;
+      const dotY = cy + Math.sin(da) * rMech;
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, baseR * 0.012, 0, TWO_PI);
+      ctx.fillStyle = cyanAlpha(0.85);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    // -------------------------------------------------------------
+    // LAYER 5: 360° Precision Radial HUD Tick Ring
+    // -------------------------------------------------------------
+    const rTick = baseR * 0.56;
+    const numTicks = 64;
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    for (let i = 0; i < numTicks; i++) {
+      const ta = (i / numTicks) * TWO_PI;
+      const isMajor = (i % 4 === 0);
+      const isQuarter = (i % 16 === 0);
+
+      let tLen = isQuarter ? baseR * 0.065 : (isMajor ? baseR * 0.045 : baseR * 0.025);
+      // Audio reactivity: ticks expand outward like dynamic audio frequency needles
+      if (currentState === 'listening' || currentState === 'speaking') {
+        const freqJitter = Math.sin(i * 1.5 + time * 0.2) * smoothedAudio * baseR * 0.04;
+        tLen += Math.max(0, freqJitter);
+      }
+
+      const x1 = Math.cos(ta) * rTick;
+      const y1 = Math.sin(ta) * rTick;
+      const x2 = Math.cos(ta) * (rTick - tLen);
+      const y2 = Math.sin(ta) * (rTick - tLen);
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = isQuarter ? cyanAlpha(0.95) : (isMajor ? cyanAlpha(0.75) : cyanAlpha(0.40));
+      ctx.lineWidth = isQuarter ? 1.8 : (isMajor ? 1.2 : 0.8);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // -------------------------------------------------------------
+    // LAYER 6: Inner Rotating Mechanical Reactor Ring
+    // -------------------------------------------------------------
+    const rInnerRing = baseR * 0.46;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(innerAngle);
+
+    // Dashed guide circle
+    ctx.beginPath();
+    ctx.arc(0, 0, rInnerRing, 0, TWO_PI);
+    ctx.strokeStyle = cyanAlpha(0.75);
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([14, 6, 4, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Stepped gear teeth / notched blocks around the perimeter
+    const numInnerNotches = 16;
+    for (let i = 0; i < numInnerNotches; i++) {
+      const na = (i / numInnerNotches) * TWO_PI;
+      ctx.save();
+      ctx.rotate(na);
+      ctx.beginPath();
+      ctx.rect(rInnerRing - baseR * 0.015, -baseR * 0.018, baseR * 0.03, baseR * 0.036);
+      ctx.fillStyle = tealAlpha(0.85);
+      ctx.fill();
+      ctx.strokeStyle = cyanAlpha(0.8);
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 4 Cardinal technical notches with dot sensors
+    for (let k = 0; k < 4; k++) {
+      const qa = (k * 0.5 * PI);
+      ctx.save();
+      ctx.rotate(qa);
+      ctx.beginPath();
+      ctx.moveTo(rInnerRing + baseR * 0.03, 0);
+      ctx.lineTo(rInnerRing - baseR * 0.03, 0);
+      ctx.strokeStyle = cyanAlpha(0.9);
+      ctx.lineWidth = 2.0;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(rInnerRing - baseR * 0.045, 0, baseR * 0.012, 0, TWO_PI);
+      ctx.fillStyle = cyanAlpha(0.9);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // Holographic Radar Sweep (THINKING state)
+    if (curProps.radarAlpha > 0.01) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(radarAngle);
+      const sweepGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, baseR * 0.65);
+      sweepGrad.addColorStop(0, cyanAlpha(curProps.radarAlpha * 0.5));
+      sweepGrad.addColorStop(1, cyanAlpha(0.0));
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, baseR * 0.65, -0.65, 0);
+      ctx.closePath();
+      ctx.fillStyle = sweepGrad;
+      ctx.fill();
+
+      // Lead sweep line
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(baseR * 0.65, 0);
+      ctx.strokeStyle = cyanAlpha(curProps.radarAlpha * 0.95);
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // -------------------------------------------------------------
+    // LAYER 7: Floating Plasma Particles
+    // -------------------------------------------------------------
+    particles.forEach(p => {
+      p.angle += p.speed * curProps.particleSpeed;
+      const curDist = baseR * p.distRatio * (1 + audioDyn * 0.35);
+      const px = cx + Math.cos(p.angle) * curDist;
+      const py = cy + Math.sin(p.angle) * curDist;
+
+      ctx.beginPath();
+      ctx.arc(px, py, p.size * (1 + audioDyn * 0.5), 0, TWO_PI);
+      ctx.fillStyle = cyanAlpha(p.alpha * curProps.coreGlow * 0.9);
+      ctx.fill();
+    });
+
+    // -------------------------------------------------------------
+    // LAYER 8: Central Energy Core & Reticles
+    // -------------------------------------------------------------
+    const rCore = baseR * 0.36;
+    const coreBreathing = pulse * baseR * 0.015;
+    const dynamicCoreR = rCore + coreBreathing + (smoothedAudio * baseR * 0.08);
+
+    // Volumetric plasma glow
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, dynamicCoreR);
+    coreGrad.addColorStop(0, `rgba(255, 255, 255, ${clamp(0.95 * b * curProps.coreGlow, 0, 1)})`);
+    coreGrad.addColorStop(0.25, cyanAlpha(0.85 * curProps.coreGlow));
+    coreGrad.addColorStop(0.65, tealAlpha(0.70 * curProps.coreGlow));
+    coreGrad.addColorStop(1, 'rgba(0, 20, 35, 0)');
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, dynamicCoreR, 0, TWO_PI);
+    ctx.fillStyle = coreGrad;
+    ctx.fill();
+
+    // Concentric reticle rings in core
+    [0.34, 0.25, 0.16].forEach((rf, idx) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, baseR * rf, 0, TWO_PI);
+      ctx.strokeStyle = (idx === 1) ? cyanAlpha(0.85) : cyanAlpha(0.45);
+      ctx.lineWidth = (idx === 1) ? 1.5 : 0.9;
+      if (idx === 0) {
+        ctx.setLineDash([6, 4]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // Diagnostic Lock-on Brackets (EXECUTING state)
+    if (curProps.executing > 0.05) {
+      const bSize = baseR * 0.26;
+      const bLen = baseR * 0.06;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(time * 0.02);
+      ctx.strokeStyle = amberAlpha(curProps.executing * 0.95);
+      ctx.lineWidth = 2.0;
+
+      // 4 L-shaped brackets
+      [
+        [-bSize, -bSize, 1, 1],
+        [bSize, -bSize, -1, 1],
+        [bSize, bSize, -1, -1],
+        [-bSize, bSize, 1, -1]
+      ].forEach(([bx, by, dx, dy]) => {
+        ctx.beginPath();
+        ctx.moveTo(bx, by + dy * bLen);
+        ctx.lineTo(bx, by);
+        ctx.lineTo(bx + dx * bLen, by);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    // -------------------------------------------------------------
+    // LAYER 9: Central Iconic JARVIS Arc Reactor Inverted Triangle (∇)
+    // -------------------------------------------------------------
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Audio / wake scale dynamics
+    let triScale = 1.0 + (pulse * 0.03) + (smoothedAudio * 0.22);
+    if (isWakingUp) {
+      // Wake flare explosion curve
+      triScale = 0.5 + Math.sin(wakeProgress * Math.PI) * 0.7;
+    }
+
+    const triSide = baseR * 0.32 * triScale;
+    const h = triSide * (Math.sqrt(3) / 2);
+
+    // Inverted Triangle (Apex pointing straight down)
+    // Vertex 1: top-left, Vertex 2: top-right, Vertex 3: bottom-apex
+    const yTop = -h * 0.38;
+    const yBot = h * 0.62;
+    const xHalf = triSide * 0.5;
+
+    ctx.beginPath();
+    ctx.moveTo(-xHalf, yTop);
+    ctx.lineTo(xHalf, yTop);
+    ctx.lineTo(0, yBot);
+    ctx.closePath();
+
+    // Translucent core triangle fill
+    ctx.fillStyle = cyanAlpha(0.25 * curProps.coreGlow);
+    ctx.fill();
+
+    // Multi-pass neon strokes for vivid intensity without expensive canvas blur
+    // Pass 1: Outer soft neon bloom
+    ctx.strokeStyle = cyanAlpha(0.35 * curProps.coreGlow);
+    ctx.lineWidth = 7.0 + smoothedAudio * 4.0;
+    ctx.stroke();
+
+    // Pass 2: Sharp electric cyan body
+    ctx.strokeStyle = cyanAlpha(0.95 * curProps.coreGlow);
+    ctx.lineWidth = 3.0;
+    ctx.stroke();
+
+    // Pass 3: Brilliant cool-white core spark
+    ctx.strokeStyle = `rgba(255, 255, 255, ${clamp(0.95 * b * curProps.coreGlow, 0, 1)})`;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // Wake-up shockwave ring animation
+    if (isWakingUp) {
+      const shockR = wakeProgress * baseR * 1.05;
+      const shockA = (1.0 - wakeProgress) * 0.9;
+      ctx.beginPath();
+      ctx.arc(0, 0, shockR, 0, TWO_PI);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${shockA})`;
+      ctx.lineWidth = 3.0 * (1.0 - wakeProgress);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    requestAnimationFrame(render);
+  }
+
+  resize();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>

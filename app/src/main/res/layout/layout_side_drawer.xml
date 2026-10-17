@@ -1,0 +1,971 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawerContentCard"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_drawer_panel"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="12dp">
+
+    <!-- 1. DRAWER TOP HEADER -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/headerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Circular HUD Treatment Logo -->
+        <FrameLayout
+            android:id="@+id/hudLogoContainer"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_drawer_logo_ring"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:id="@+id/ivDrawerLogo"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:src="@drawable/logo_jarvis"
+                android:contentDescription="Assistant Logo" />
+        </FrameLayout>
+
+        <!-- Assistant Title & Subtitle -->
+        <LinearLayout
+            android:id="@+id/layoutAssistantTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
+            app:layout_constraintStart_toEndOf="@+id/hudLogoContainer"
+            app:layout_constraintEnd_toStartOf="@+id/btnDrawerClose"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <TextView
+                android:id="@+id/tvDrawerAssistantTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/primary_cyan"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="0.25"
+                tools:text="J A R V I S" />
+
+            <TextView
+                android:id="@+id/tvDrawerAssistantSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="YOUR PERSONAL AI"
+                android:textColor="@color/text_secondary"
+                android:textSize="9.5sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.12"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- Close Button (X) -->
+        <ImageButton
+            android:id="@+id/btnDrawerClose"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_header_button"
+            android:src="@drawable/ic_close"
+            android:contentDescription="Close Menu"
+            app:tint="@color/text_secondary"
+            android:padding="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- 2. USER GREETING & TAGLINE BLOCK -->
+    <LinearLayout
+        android:id="@+id/greetingContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="14dp"
+        app:layout_constraintTop_toBottomOf="@+id/headerContainer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvDrawerGreeting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.03"
+            tools:text="Good evening," />
+
+        <TextView
+            android:id="@+id/tvDrawerUserName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.04"
+            android:layout_marginTop="1dp"
+            tools:text="Pradip." />
+
+        <TextView
+            android:id="@+id/tvDrawerTagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/tagline_quote"
+            android:textColor="@color/text_muted"
+            android:textSize="10.5sp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="0.02"
+            android:lineSpacingExtra="1.5dp"
+            android:layout_marginTop="3dp" />
+
+    </LinearLayout>
+
+    <!-- 3. SCROLLABLE MENU ITEMS -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/menuScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="6dp"
+        android:scrollbars="none"
+        android:overScrollMode="never"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@+id/greetingContainer"
+        app:layout_constraintBottom_toTopOf="@+id/footerContainer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- ================= SECTION: MAIN ================= -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MAIN"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:fontFamily="sans-serif-bold"
+                    android:letterSpacing="0.15" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@color/cyan_border" />
+            </LinearLayout>
+
+            <!-- ITEM: Home (Active default) -->
+            <LinearLayout
+                android:id="@+id/itemHome"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_active"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconHome"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_home"
+                    app:tint="@color/primary_cyan" />
+
+                <TextView
+                    android:id="@+id/tvTitleHome"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Home"
+                    android:textColor="@color/primary_cyan"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowHome"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/primary_cyan" />
+            </LinearLayout>
+
+            <!-- ITEM: JARVIS Home -->
+            <LinearLayout
+                android:id="@+id/itemJarvisHome"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconJarvisHome"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_jarvis_home"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleJarvisHome"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="JARVIS Home"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowJarvisHome"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Memories -->
+            <LinearLayout
+                android:id="@+id/itemMemories"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconMemories"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_memory"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleMemories"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Memories"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowMemories"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Owner Memory 🔐 -->
+            <LinearLayout
+                android:id="@+id/itemOwnerMemory"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconOwnerMemory"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_lock"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleOwnerMemory"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Owner Memory 🔐"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowOwnerMemory"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Chat -->
+            <LinearLayout
+                android:id="@+id/itemChat"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconChat"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_chat"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleChat"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Chat"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowChat"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+
+            <!-- ================= SECTION: PRODUCTIVITY ================= -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PRODUCTIVITY"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:fontFamily="sans-serif-bold"
+                    android:letterSpacing="0.15" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@color/cyan_border" />
+            </LinearLayout>
+
+            <!-- ITEM: Markets -->
+            <LinearLayout
+                android:id="@+id/itemMarkets"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconMarkets"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_trending_up"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleMarkets"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Markets"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowMarkets"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Documents -->
+            <LinearLayout
+                android:id="@+id/itemDocuments"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconDocuments"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_description"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleDocuments"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Documents"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowDocuments"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Website / Coding -->
+            <LinearLayout
+                android:id="@+id/itemWebsiteCoding"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconWebsiteCoding"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_code"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleWebsiteCoding"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Website / Coding"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowWebsiteCoding"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Study / Whiteboard -->
+            <LinearLayout
+                android:id="@+id/itemStudyWhiteboard"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconStudyWhiteboard"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_edit"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleStudyWhiteboard"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Study / Whiteboard"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowStudyWhiteboard"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+
+            <!-- ================= SECTION: SYSTEM ================= -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SYSTEM"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:fontFamily="sans-serif-bold"
+                    android:letterSpacing="0.15" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@color/cyan_border" />
+            </LinearLayout>
+
+            <!-- ITEM: Settings -->
+            <LinearLayout
+                android:id="@+id/itemSettings"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconSettings"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleSettings"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Settings"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowSettings"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: JARVIS Rules -->
+            <LinearLayout
+                android:id="@+id/itemJarvisRules"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconJarvisRules"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_shield"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleJarvisRules"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="JARVIS Rules"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowJarvisRules"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: PC ↔ Phone -->
+            <LinearLayout
+                android:id="@+id/itemPcPhone"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconPcPhone"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_swap_horiz"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitlePcPhone"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="PC ↔ Phone"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowPcPhone"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+
+            <!-- ================= SECTION: OTHER ================= -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="OTHER"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:fontFamily="sans-serif-bold"
+                    android:letterSpacing="0.15" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@color/cyan_border" />
+            </LinearLayout>
+
+            <!-- ITEM: Privacy Policy -->
+            <LinearLayout
+                android:id="@+id/itemPrivacyPolicy"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconPrivacyPolicy"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_lock"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitlePrivacyPolicy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Privacy Policy"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowPrivacyPolicy"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: About -->
+            <LinearLayout
+                android:id="@+id/itemAbout"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconAbout"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_info"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleAbout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="About"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowAbout"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Upgrade -->
+            <LinearLayout
+                android:id="@+id/itemUpgrade"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/ivIconUpgrade"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_star"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleUpgrade"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Upgrade"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowUpgrade"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+            <!-- ITEM: Notifications -->
+            <LinearLayout
+                android:id="@+id/itemNotifications"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_drawer_item_inactive"
+                android:paddingHorizontal="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="6dp">
+
+                <ImageView
+                    android:id="@+id/ivIconNotifications"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_bell"
+                    app:tint="@color/cyan_accent" />
+
+                <TextView
+                    android:id="@+id/tvTitleNotifications"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:text="Notifications"
+                    android:textColor="@color/text_cool_white"
+                    android:textSize="13.5sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <ImageView
+                    android:id="@+id/ivArrowNotifications"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- 4. DRAWER FOOTER (ANCHORED AT BOTTOM) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/footerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Left: Version & Tagline -->
+        <LinearLayout
+            android:id="@+id/layoutFooterLeft"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/layoutFooterRight"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintHorizontal_weight="1">
+
+            <TextView
+                android:id="@+id/tvDrawerVersionAssistant"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.04"
+                tools:text="v1.0.0 • JARVIS" />
+
+            <TextView
+                android:id="@+id/tvDrawerBuiltForYou"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Built for a Smarter You"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- Right: Stay Curious + Equalizer -->
+        <LinearLayout
+            android:id="@+id/layoutFooterRight"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <TextView
+                android:id="@+id/tvDrawerStayCurious"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Stay Curious"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.03"
+                android:layout_marginEnd="6dp" />
+
+            <ImageView
+                android:id="@+id/ivDrawerWaveform"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_waveform_equalizer"
+                app:tint="@color/primary_cyan"
+                android:contentDescription="Equalizer" />
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
