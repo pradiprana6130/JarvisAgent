@@ -59,7 +59,7 @@ class ApiConnectionActivity : AppCompatActivity() {
 
         when (preferences.aiModel) {
             GeminiConstants.MODEL_2_5_FLASH_LIVE -> binding.rbModelFlash20.isChecked = true
-            GeminiConstants.MODEL_2_5_FLASH -> binding.rbModelFlash15.isChecked = true
+            GeminiConstants.MODEL_3_8_FLASH -> binding.rbModelFlash15.isChecked = true
             else -> binding.rbModelFlashThinking.isChecked = true
         }
 
@@ -158,7 +158,7 @@ class ApiConnectionActivity : AppCompatActivity() {
 
         val selectedModel = when (binding.rgModelGroup.checkedRadioButtonId) {
             binding.rbModelFlash20.id -> GeminiConstants.MODEL_2_5_FLASH_LIVE
-            binding.rbModelFlash15.id -> GeminiConstants.MODEL_2_5_FLASH
+            binding.rbModelFlash15.id -> GeminiConstants.MODEL_3_8_FLASH
             else -> GeminiConstants.MODEL_2_5_FLASH_NATIVE_AUDIO
         }
 
@@ -169,8 +169,14 @@ class ApiConnectionActivity : AppCompatActivity() {
             return
         }
         preferences.aiModel = selectedModel
-        preferences.textModel = GeminiConstants.MODEL_2_5_FLASH
-        preferences.visionModel = GeminiConstants.MODEL_2_5_FLASH
+        val currentText = preferences.textModel
+        if (currentText.isBlank() || currentText.contains("gemini-2.5-flash")) {
+            preferences.textModel = GeminiConstants.MODEL_3_8_FLASH
+        }
+        val currentVision = preferences.visionModel
+        if (currentVision.isBlank() || currentVision.contains("gemini-2.5-flash")) {
+            preferences.visionModel = GeminiConstants.MODEL_3_8_FLASH
+        }
         preferences.customEndpoint = customEp
         com.jarvis.assistant.background.JarvisConversationService.clearLiveError()
         com.jarvis.assistant.background.JarvisConversationService.restartSession()

@@ -61,6 +61,19 @@ class ChatRepository(private val preferences: AppPreferences? = null) {
         attachmentThumbnailBase64: String? = null
     ): String {
         val cleanUser = userText.trim()
+
+        // Deduplication guard: if an identical turn was initiated in the last 2.5s and has not yet completed,
+        // re-use it to prevent duplicate turns on wake-up or connection handshake.
+        val currentTurns = _turns.value
+        val lastTurn = currentTurns.lastOrNull()
+        if (lastTurn != null &&
+            lastTurn.userTranscript == cleanUser &&
+            lastTurn.jarvisResponse.isBlank() &&
+            (System.currentTimeMillis() - lastTurn.timestamp) < 2500L
+        ) {
+            return lastTurn.id
+        }
+
         val turnId = UUID.randomUUID().toString()
         val newTurn = ChatTurn(
             id = turnId,
@@ -169,7 +182,19 @@ class ChatRepository(private val preferences: AppPreferences? = null) {
         if (turnIdx < 0) return
 
         val oldTurn = currentTurns[turnIdx]
-        val updatedTurn = oldTurn.copy(jarvisResponse = clean)
+        val effectiveResponse = if (clean.isEmpty()) {
+            if (oldTurn.jarvisResponse.isNotEmpty()) {
+                oldTurn.jarvisResponse
+            } else if (isComplete) {
+                "I was unable to generate a response. Please check your connection or API settings, and try again."
+            } else {
+                ""
+            }
+        } else {
+            clean
+        }
+
+        val updatedTurn = oldTurn.copy(jarvisResponse = effectiveResponse)
         currentTurns[turnIdx] = updatedTurn
         _turns.value = currentTurns
 

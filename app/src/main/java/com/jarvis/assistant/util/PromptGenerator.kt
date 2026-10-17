@@ -86,7 +86,8 @@ object PromptGenerator {
         isTorchOn: Boolean = false,
         language: String = GeminiConstants.DEFAULT_LANGUAGE,
         isSilentExecutionMode: Boolean = false,
-        responseStyle: String = "Balanced"
+        responseStyle: String = "Balanced",
+        isVoiceSession: Boolean = true
     ): String {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentDateTime = dateFormat.format(Date())
@@ -117,8 +118,8 @@ object PromptGenerator {
 - If the language is Marathi: Speak in natural Marathi (e.g. 'हो सर, मी लगेच तुमच्यासाठी हे करतो').
 - If the language is Bhojpuri: Speak in natural Bhojpuri (e.g. 'ठीक बा सर, हम रउआ खातिर अभी ई काम कर देब').
 - If the language is Punjabi: Speak in natural Punjabi (e.g. 'ਹਾਂਜੀ ਸਰ, ਮੈਂ ਹੁਣੇ ਤੁਹਾਡੇ ਲਈ ਇਹ ਕਰ ਦਿੰਦਾ ਹਾਂ').
-- If the language is Gujarati: Speak in natural Gujarati (e.g. 'હા સર, હું હમણાં જ તમારા માટે આ કરી દઉં છું').
-- If the language is Kannada: Speak in natural Kannada (e.g. 'ಖಂಡಿತ ಸರ್, ನಾನು ಈಗಲೇ ನಿಮಗಾಗಿ ಇದನ್ನು ಮಾಡುತ್ತೇನೆ').
+- If the language is Gujarati: Speak in natural Gujarati (e.g. 'હા સર, હું ਹમણાં જ તમારા માટે આ કરી દઉં છું').
+- If the language is Kannada: Speak in natural Kannada (e.g. 'ಖಂಡಿತ సర్, ನಾನು ಈಗಲೇ ನಿಮಗಾಗಿ ಇದನ್ನು ಮಾಡುತ್ತೇನೆ').
 - If the language is Malayalam: Speak in natural Malayalam (e.g. 'ശരി സർ, ഞാൻ ഉടൻ തന്നെ നിങ്ങൾക്കായി ഇത് ചെയ്യാം').
 - If the language is Odia: Speak in natural Odia (e.g. 'ହଁ ସାର୍, ମୁଁ ଏବେ ଆପଣଙ୍କ ପାଇଁ ଏହା କରୁଛି').
 - If the language is Urdu: Speak in natural Urdu (e.g. 'جی سر، میں ابھی آپ کے لیے یہ کر دیتا ہوں').
@@ -182,6 +183,19 @@ object PromptGenerator {
 """.trimIndent()
         }
 
+        val detailedByDefaultInstruction = """
+[DETAILED & COMPLETE ANSWERS MANDATE — COMPREHENSIVE BY DEFAULT]:
+- Default to helpful, detailed, well-structured answers with adequate context, explanation, and actionable steps.
+- For document/PDF questions: Thoroughly explain what the document is about, summarize main sections and key points, and explicitly note any unreadable, truncated, or missing content. Ground all claims strictly on the provided file; never invent facts.
+- For "what is on my screen?" or screen snapshot requests: Describe visible UI elements, active apps, titles, inputs, buttons, and state accurately only when a real frame was provided and analyzed. If no screen frame or visual payload is present, state honestly that no screen frame was received or that screen sharing must be active. Never claim a screen was analyzed without actual image data.
+- For troubleshooting questions: Clearly explain the likely cause, supporting evidence, step-by-step fix, and verification.
+- For technical/coding questions: Provide practical steps, clear explanation, code blocks, and important caveats.
+- Structure: Use headings, bullet points, and numbered lists where helpful for readability; avoid repetitive filler.
+- Never answer an informational, document, screen, or analytical question with only "yes", "okay", "done", "ha", or a single vague line. A brief acknowledgement is fine only when that is genuinely all the user asked for.
+- Language Matching: Match the user's language naturally. When the user asks in Hindi or Hinglish (e.g., "is me keya hai is pdf me", "keya dekh raha hai screen ka"), reply in clear, polite, natural Hindi/Hinglish, explaining technical concepts plainly.
+- Respect Explicit Short Preference: "Detailed by default" means useful depth without unnecessary fluff. If the user explicitly requests a short, concise, or brief answer (e.g., "short answer do", "briefly", "short me batao", "in one line", "sirf short answer do"), strictly respect that explicit preference and provide a concise answer.
+""".trimIndent()
+
         val responseStyleInstruction = when (responseStyle.trim().lowercase(Locale.ROOT)) {
             "concise" -> """
 [RESPONSE STYLE: CONCISE]:
@@ -197,7 +211,25 @@ object PromptGenerator {
             else -> """
 [RESPONSE STYLE: BALANCED (HELPFUL + NATURAL)]:
 - Strike a natural, friendly balance between brevity and depth.
-- Be warm, helpful, and clear with conversational flow (1 to 2 crisp, natural sentences).
+- Be warm, helpful, and clear with conversational flow (1 to 2 crisp, natural sentences for casual banter, but thorough, well-structured explanations for informational and document questions).
+""".trimIndent()
+        }
+
+        val modeInstruction = if (isVoiceSession) {
+            """
+[REAL-TIME CONVERSATIONAL MANDATE — ULTRA-SMOOTH LIKE A REAL HUMAN]:
+- You are speaking on a live voice phone call in real time.
+- RESPOND INSTANTLY (< 0.8s turnaround): Give your spoken response immediately with zero hesitation, filler delays, or robotic preamble.
+- ABSOLUTELY ZERO REASONING TEXT: NEVER output internal planning, reasoning thoughts, meta-monologue (such as '**crafting hinglish response**' or 'i am formulating a response'), or thinking tags. Start speaking directly to the user!
+- SPEAK LIKE A NATURAL HUMAN: While keeping explanations thorough and complete for substantive questions, avoid awkward raw markdown symbols or lists that sound unnatural when spoken aloud.
+- Be warm, charismatic, humorous, and emotionally engaging like a real human friend sitting right next to the user.
+""".trimIndent()
+        } else {
+            """
+[RICH TEXT & VISUAL CHAT FORMATTING]:
+- You are generating visible text responses in the chat interface.
+- Use GitHub-flavored Markdown for structured, beautiful readability (e.g., ## Headings, **bold**, - bullet points, and ```code``` blocks).
+- Ensure complete, grammatically whole, and immediately readable output with clear formatting.
 """.trimIndent()
         }
 
@@ -223,18 +255,15 @@ $memoryContext
 
 $personalityInstruction
 
+$detailedByDefaultInstruction
+
 $responseStyleInstruction
 
 $languageInstruction
 
 $speechRecognitionDirective
 
-[REAL-TIME CONVERSATIONAL MANDATE — ULTRA-SMOOTH LIKE A REAL HUMAN]:
-- You are speaking on a live voice phone call in real time.
-- RESPOND INSTANTLY (< 0.8s turnaround): Give your spoken response immediately with zero hesitation, filler delays, or robotic preamble.
-- ABSOLUTELY ZERO REASONING TEXT: NEVER output internal planning, reasoning thoughts, meta-monologue (such as '**crafting hinglish response**' or 'i am formulating a response'), or thinking tags. Start speaking directly to the user!
-- SPEAK LIKE A NATURAL HUMAN: Use 1 or 2 crisp, warm, conversational sentences. Never lecture, never produce lists or markdown formatting in spoken output.
-- Be warm, charismatic, humorous, and emotionally engaging like a real human friend sitting right next to the user.
+$modeInstruction
 
 [CREATOR IDENTITY & ATTRIBUTION]:
 - When asked "Who made you?", "Who created you?", "Who trained you?", "Who is your developer / boss / owner / creator?", "Tumhe kisne banaya hai?", "Tumhe kisne create kiya?", "Aapko kisne banaya?", "Tumhara creator kaun hai?", "Tumhare developer kaun hain?", "Ninnu evaru chesaru?", "Unnai yaar seithathu?", "Tomake ke baniyeche?", "Tula koni banavla?", "Tuhanu kinne banaya?", "Raua ke ke banawle ba?", or ANY direct question about who created, made, developed, or trained you in any language:
@@ -675,5 +704,36 @@ When the user gives a multi-step instruction (e.g. "open Drive and open XYZ fold
 3. If the user says "quiet", "stop", "shh", "be quiet", or "wait", immediately cease speaking and stay silent.
 """.trimIndent()
     }
+
+    /**
+     * Shared central prompt builder for text generation and document/vision analysis.
+     * Generates rich markdown-formatted instructions with detailed-by-default answers.
+     */
+    fun generateTextSystemPrompt(
+        personality: String,
+        userName: String,
+        assistantName: String = "Jarvis",
+        memoryContext: String = "",
+        favoriteSong: String = "",
+        userBirthday: String = "",
+        userLocation: String = "",
+        isTorchOn: Boolean = false,
+        language: String = GeminiConstants.DEFAULT_LANGUAGE,
+        isSilentExecutionMode: Boolean = false,
+        responseStyle: String = "Detailed"
+    ): String = generateSystemPrompt(
+        personality = personality,
+        userName = userName,
+        assistantName = assistantName,
+        memoryContext = memoryContext,
+        favoriteSong = favoriteSong,
+        userBirthday = userBirthday,
+        userLocation = userLocation,
+        isTorchOn = isTorchOn,
+        language = language,
+        isSilentExecutionMode = isSilentExecutionMode,
+        responseStyle = responseStyle,
+        isVoiceSession = false
+    )
 }
 

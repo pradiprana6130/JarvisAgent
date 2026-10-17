@@ -6,6 +6,7 @@ object GeminiConstants {
     const val MODEL_2_5_FLASH_NATIVE_AUDIO = "models/gemini-2.5-flash-native-audio-preview-12-2025"
     const val MODEL_2_5_FLASH_LIVE = "models/gemini-2.5-flash-live-preview"
     const val MODEL_2_5_FLASH = "models/gemini-2.5-flash"
+    const val MODEL_3_8_FLASH = "models/gemini-3.8-flash"
     const val MODEL_3_0_FLASH = "models/gemini-3.0-flash"
     const val MODEL_3_1_FLASH_PREVIEW = "models/gemini-3.1-flash-preview"
     const val MODEL_3_1_FLASH_LITE_PREVIEW = "models/gemini-3.1-flash-lite-preview"
@@ -13,15 +14,15 @@ object GeminiConstants {
     // Backward-compatibility aliases
     const val MODEL_3_1_FLASH = MODEL_2_5_FLASH_NATIVE_AUDIO
     const val MODEL_3_8_LIVE = MODEL_2_5_FLASH_LIVE
-    const val MODEL_3_1_FLASH_AGENT = MODEL_2_5_FLASH
-    const val MODEL_2_0_FLASH = MODEL_2_5_FLASH
+    const val MODEL_3_1_FLASH_AGENT = MODEL_3_8_FLASH
+    const val MODEL_2_0_FLASH = MODEL_3_8_FLASH
     const val MODEL_2_0_FLASH_REALTIME = MODEL_2_5_FLASH_NATIVE_AUDIO
 
     const val RELEASE_API_KEY = ""
 
     const val DEFAULT_LIVE_MODEL = MODEL_2_5_FLASH_NATIVE_AUDIO
-    const val DEFAULT_TEXT_MODEL = MODEL_2_5_FLASH
-    const val DEFAULT_VISION_MODEL = MODEL_2_5_FLASH
+    const val DEFAULT_TEXT_MODEL = MODEL_3_8_FLASH
+    const val DEFAULT_VISION_MODEL = MODEL_3_8_FLASH
     const val DEFAULT_MODEL = DEFAULT_LIVE_MODEL
 
     val SUPPORTED_LIVE_MODELS = listOf(
@@ -30,16 +31,16 @@ object GeminiConstants {
     )
 
     val SUPPORTED_TEXT_MODELS = listOf(
-        MODEL_2_5_FLASH,
+        MODEL_3_8_FLASH,
         MODEL_3_0_FLASH,
         MODEL_3_1_FLASH_PREVIEW,
         MODEL_3_1_FLASH_LITE_PREVIEW
     )
 
     val SUPPORTED_MODELS = listOf(
+        MODEL_3_8_FLASH,
         MODEL_2_5_FLASH_NATIVE_AUDIO,
         MODEL_2_5_FLASH_LIVE,
-        MODEL_2_5_FLASH,
         MODEL_3_0_FLASH,
         MODEL_3_1_FLASH_PREVIEW,
         MODEL_3_1_FLASH_LITE_PREVIEW

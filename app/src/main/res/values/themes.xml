@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base App Theme: Authentic JARVIS HUD Dark Theme -->
     <style name="Theme.JarvisAssistant" parent="Theme.JarvisAssistant.Dark">
         <item name="android:statusBarColor">@color/bg_space</item>
@@ -40,7 +40,7 @@
         <item name="android:statusBarColor">#EEF2F9</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">#EEF2F9</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
         <item name="android:windowBackground">#EEF2F9</item>
         <item name="colorPrimary">#2F6BFF</item>
         <item name="colorOnPrimary">#FFFFFF</item>
@@ -79,7 +79,7 @@
         <item name="android:statusBarColor">#020B10</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:navigationBarColor">#020B10</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:windowBackground">#020B10</item>
         <item name="colorPrimary">#00DDEB</item>
         <item name="colorOnPrimary">#020B10</item>
@@ -120,7 +120,7 @@
         <item name="android:statusBarColor">#0E0307</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:navigationBarColor">#0E0307</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:windowBackground">#0E0307</item>
         <item name="colorPrimary">#FF4D5E</item>
         <item name="colorOnPrimary">#FFFFFF</item>
@@ -159,7 +159,7 @@
         <item name="android:statusBarColor">#FFF0EA</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">#FFF0EA</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
         <item name="android:windowBackground">#FFF0EA</item>
         <item name="colorPrimary">#FF6A3D</item>
         <item name="colorOnPrimary">#FFFFFF</item>
@@ -198,7 +198,7 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:colorBackground">@android:color/transparent</item>
         <item name="colorPrimary">#2F6BFF</item>
@@ -238,7 +238,7 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:colorBackground">@android:color/transparent</item>
         <item name="colorPrimary">#00DDEB</item>

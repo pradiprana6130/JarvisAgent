@@ -238,7 +238,7 @@ class GeminiVoicePreviewManager(
         // Candidate models supporting audio modality
         val candidateModels = listOf(
             com.jarvis.assistant.network.GeminiModelManager.cleanModelId(preferences.textModel),
-            "gemini-2.5-flash",
+            "gemini-3.8-flash",
             "gemini-2.5-flash-preview-tts",
             com.jarvis.assistant.network.GeminiModelManager.cleanModelId(preferences.aiModel)
         ).distinct()

@@ -32,6 +32,7 @@ class AppPreferences(context: Context) {
 
     init {
         migrateApiKeyToEncryptedStorage()
+        migrateLegacyModelPreferences()
         val current = prefs.getString(KEY_MODEL, null)
         if (current == null || !com.jarvis.assistant.network.GeminiModelManager.isModelSupported(current)) {
             prefs.edit().putString(KEY_MODEL, GeminiConstants.DEFAULT_LIVE_MODEL).apply()
@@ -209,6 +210,23 @@ class AppPreferences(context: Context) {
         }
     }
 
+    private fun migrateLegacyModelPreferences() {
+        val currentText = prefs.getString(KEY_TEXT_MODEL, null)
+        if (currentText != null) {
+            val clean = com.jarvis.assistant.network.GeminiModelManager.cleanModelId(currentText)
+            if (clean.equals("gemini-2.5-flash", ignoreCase = true)) {
+                prefs.edit().putString(KEY_TEXT_MODEL, GeminiConstants.DEFAULT_TEXT_MODEL).apply()
+            }
+        }
+        val currentVision = prefs.getString(KEY_VISION_MODEL, null)
+        if (currentVision != null) {
+            val clean = com.jarvis.assistant.network.GeminiModelManager.cleanModelId(currentVision)
+            if (clean.equals("gemini-2.5-flash", ignoreCase = true)) {
+                prefs.edit().putString(KEY_VISION_MODEL, GeminiConstants.DEFAULT_VISION_MODEL).apply()
+            }
+        }
+    }
+
     var aiModel: String
         get() {
             val stored = prefs.getString(KEY_MODEL, GeminiConstants.DEFAULT_LIVE_MODEL) ?: GeminiConstants.DEFAULT_LIVE_MODEL
@@ -228,6 +246,12 @@ class AppPreferences(context: Context) {
     var textModel: String
         get() {
             val stored = prefs.getString(KEY_TEXT_MODEL, GeminiConstants.DEFAULT_TEXT_MODEL) ?: GeminiConstants.DEFAULT_TEXT_MODEL
+            val clean = com.jarvis.assistant.network.GeminiModelManager.cleanModelId(stored)
+            if (clean.equals("gemini-2.5-flash", ignoreCase = true)) {
+                val migrated = GeminiConstants.DEFAULT_TEXT_MODEL
+                prefs.edit().putString(KEY_TEXT_MODEL, migrated).apply()
+                return com.jarvis.assistant.network.GeminiModelManager.resolveTextModel(migrated)
+            }
             return com.jarvis.assistant.network.GeminiModelManager.resolveTextModel(stored)
         }
         set(value) {
@@ -238,6 +262,12 @@ class AppPreferences(context: Context) {
     var visionModel: String
         get() {
             val stored = prefs.getString(KEY_VISION_MODEL, GeminiConstants.DEFAULT_VISION_MODEL) ?: GeminiConstants.DEFAULT_VISION_MODEL
+            val clean = com.jarvis.assistant.network.GeminiModelManager.cleanModelId(stored)
+            if (clean.equals("gemini-2.5-flash", ignoreCase = true)) {
+                val migrated = GeminiConstants.DEFAULT_VISION_MODEL
+                prefs.edit().putString(KEY_VISION_MODEL, migrated).apply()
+                return com.jarvis.assistant.network.GeminiModelManager.resolveVisionModel(migrated)
+            }
             return com.jarvis.assistant.network.GeminiModelManager.resolveVisionModel(stored)
         }
         set(value) {

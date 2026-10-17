@@ -108,7 +108,14 @@ class JarvisConversationService : Service() {
         const val INACTIVITY_TIMEOUT_MS = 120_000L // 120 seconds (2 minutes) before idle standby
         private const val STANDBY_COOLDOWN_MS = 2500L
 
-        private val pendingLaunchTextMessage = java.util.concurrent.atomic.AtomicReference<String?>(null)
+        data class PendingPrompt(
+            val promptWithDocs: String,
+            val displayUserText: String,
+            val attachments: List<com.jarvis.assistant.attachment.AttachmentItem> = emptyList(),
+            val screenFrameBytes: ByteArray? = null
+        )
+
+        private val pendingLaunchPrompt = java.util.concurrent.atomic.AtomicReference<PendingPrompt?>(null)
 
         @Volatile private var _lastHardwareVolumeKeyTime = 0L
         val lastHardwareVolumeKeyTime: Long get() = _lastHardwareVolumeKeyTime
@@ -265,7 +272,14 @@ class JarvisConversationService : Service() {
                 instance.onUserSubmitPrompt(clean, displayUserText, attachments, screenFrameBytes)
             } else {
                 val context = JarvisApp.instance
-                pendingLaunchTextMessage.set(clean)
+                pendingLaunchPrompt.set(
+                    PendingPrompt(
+                        promptWithDocs = clean,
+                        displayUserText = displayUserText,
+                        attachments = attachments,
+                        screenFrameBytes = screenFrameBytes
+                    )
+                )
                 val intent = Intent(context, JarvisConversationService::class.java).apply {
                     action = ACTION_START_CONVERSATION
                 }
@@ -515,7 +529,18 @@ class JarvisConversationService : Service() {
         audioPlayer?.flush()
         suppressAudioUntilTurnComplete = false
         setConversationState(ConversationState.THINKING)
-        val displayText = displayUserText.ifBlank { promptWithDocs }
+        val rawDisplay = displayUserText.trim()
+        val extractedUserText = com.jarvis.assistant.attachment.AttachmentParser.extractUserInstruction(rawDisplay)
+        val displayText = if (extractedUserText.isNotBlank()) {
+            extractedUserText
+        } else if (attachments.isNotEmpty()) {
+            val primary = attachments.first()
+            "Analyze attached ${primary.name}"
+        } else if (screenFrameBytes != null) {
+            "Screen Snapshot"
+        } else {
+            promptWithDocs
+        }
         currentTurnUserText.clear()
         currentTurnUserText.append(displayText)
         _liveUserTranscript.value = displayText
@@ -630,7 +655,22 @@ class JarvisConversationService : Service() {
         val attachmentName = primaryAttachment?.name ?: (if (screenFrameBytes != null) "Screen Snapshot" else null)
         val attachmentSize = primaryAttachment?.formattedSize ?: (if (screenFrameBytes != null) "${screenFrameBytes.size / 1024} KB" else null)
         val attachmentType = primaryAttachment?.attachmentType?.name ?: (if (screenFrameBytes != null) "SCREEN" else null)
-        val attachmentThumbnailBase64 = primaryAttachment?.thumbnailBase64
+
+        val screenThumbnail = if (screenFrameBytes != null && primaryAttachment?.thumbnailBase64 == null) {
+            try {
+                val bmp = android.graphics.BitmapFactory.decodeByteArray(screenFrameBytes, 0, screenFrameBytes.size)
+                if (bmp != null) {
+                    val thumbWidth = 140
+                    val thumbHeight = (bmp.height * (thumbWidth.toFloat() / bmp.width)).toInt().coerceIn(60, 180)
+                    val thumb = android.graphics.Bitmap.createScaledBitmap(bmp, thumbWidth, thumbHeight, true)
+                    java.io.ByteArrayOutputStream().use { out ->
+                        thumb.compress(android.graphics.Bitmap.CompressFormat.JPEG, 65, out)
+                        android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+                    }
+                } else null
+            } catch (_: Exception) { null }
+        } else null
+        val attachmentThumbnailBase64 = primaryAttachment?.thumbnailBase64 ?: screenThumbnail
 
         val turnId = JarvisApp.instance.chatRepository.startTurn(
             userText = displayText,
@@ -643,47 +683,65 @@ class JarvisConversationService : Service() {
 
         val imageBytesToSend = screenFrameBytes ?: attachments.firstOrNull { it.imageBytes != null }?.imageBytes
 
-        val ws = liveWebSocket
-        if (ws != null && ws.isSessionReady()) {
-            if (imageBytesToSend != null && imageBytesToSend.isNotEmpty()) {
-                ws.sendMediaChunk(imageBytesToSend)
-            }
-            ws.sendClientContent(promptWithDocs)
-        } else {
-            // REST fallback for when Live WebSocket is not connected or in text-only mode
-            serviceScope.launch(Dispatchers.IO) {
-                val result = if (imageBytesToSend != null && imageBytesToSend.isNotEmpty()) {
-                    // Multimodal Vision route (images, screen frames, scanned PDFs)
-                    com.jarvis.assistant.network.GeminiRestClient.generateVision(
-                        apiKey = preferences.apiKey,
-                        model = preferences.visionModel,
-                        prompt = promptWithDocs,
-                        imageBytes = imageBytesToSend
-                    )
-                } else {
-                    // Standard Text route (.txt, text PDF, .docx, code, pure text chat)
-                    com.jarvis.assistant.network.GeminiRestClient.generateText(
-                        apiKey = preferences.apiKey,
-                        model = preferences.textModel,
-                        prompt = promptWithDocs
-                    )
-                }
-                withContext(Dispatchers.Main) {
-                    result.onSuccess { reply ->
-                        JarvisApp.instance.chatRepository.updateAssistantResponse(turnId, reply, isComplete = true)
-                        if (!preferences.isManualOff) {
-                            announce(reply)
+        // User-submitted chat, document, and vision requests must always use the dedicated
+        // REST model pipeline (with markdown support, complete document reasoning, and detailed answers)
+        serviceScope.launch(Dispatchers.IO) {
+            val textSystemPrompt = generateCurrentTextSystemPrompt()
+            val result = if (imageBytesToSend != null && imageBytesToSend.isNotEmpty()) {
+                // Multimodal Vision route (images, screen frames, scanned PDFs)
+                com.jarvis.assistant.network.GeminiRestClient.generateVision(
+                    apiKey = preferences.apiKey,
+                    model = preferences.visionModel,
+                    prompt = promptWithDocs,
+                    imageBytes = imageBytesToSend,
+                    systemInstruction = textSystemPrompt,
+                    customEndpoint = preferences.customEndpoint.ifBlank { null },
+                    onPartialResponse = { partialText ->
+                        if (partialText.isNotBlank()) {
+                            serviceScope.launch(Dispatchers.Main) {
+                                JarvisApp.instance.chatRepository.updateAssistantResponse(turnId, partialText, isComplete = false)
+                            }
                         }
-                        currentTurnId = null
-                        setConversationState(ConversationState.IDLE)
-                        idleController.notifyInteractionCompleted()
-                    }.onFailure { err ->
-                        val errMsg = err.message ?: "Failed to get response"
-                        JarvisApp.instance.chatRepository.updateAssistantResponse(turnId, "Error: $errMsg", isComplete = true)
-                        currentTurnId = null
-                        setConversationState(ConversationState.IDLE)
-                        idleController.notifyInteractionCompleted()
                     }
+                )
+            } else {
+                // Standard Text route (.txt, text PDF, .docx, code, pure text chat)
+                com.jarvis.assistant.network.GeminiRestClient.generateText(
+                    apiKey = preferences.apiKey,
+                    model = preferences.textModel,
+                    prompt = promptWithDocs,
+                    systemInstruction = textSystemPrompt,
+                    customEndpoint = preferences.customEndpoint.ifBlank { null },
+                    onPartialResponse = { partialText ->
+                        if (partialText.isNotBlank()) {
+                            serviceScope.launch(Dispatchers.Main) {
+                                JarvisApp.instance.chatRepository.updateAssistantResponse(turnId, partialText, isComplete = false)
+                            }
+                        }
+                    }
+                )
+            }
+
+            withContext(Dispatchers.Main) {
+                result.onSuccess { reply ->
+                    val finalReply = if (reply.isNotBlank()) reply else "I have completed processing, but no text was returned."
+                    JarvisApp.instance.chatRepository.updateAssistantResponse(turnId, finalReply, isComplete = true)
+                    if (!preferences.isManualOff) {
+                        announce(finalReply)
+                    }
+                    if (currentTurnId == turnId) {
+                        currentTurnId = null
+                    }
+                    setConversationState(ConversationState.IDLE)
+                    idleController.notifyInteractionCompleted()
+                }.onFailure { err ->
+                    val errMsg = err.message ?: "Failed to get response"
+                    JarvisApp.instance.chatRepository.updateAssistantResponse(turnId, "Error: $errMsg", isComplete = true)
+                    if (currentTurnId == turnId) {
+                        currentTurnId = null
+                    }
+                    setConversationState(ConversationState.IDLE)
+                    idleController.notifyInteractionCompleted()
                 }
             }
         }
@@ -1143,10 +1201,15 @@ class JarvisConversationService : Service() {
                 if (!_isSessionOn.value && !_isStandby.value) enterStandby(announce = false)
             }
         }
-        val pendingText = pendingLaunchTextMessage.getAndSet(null)
-        if (!pendingText.isNullOrBlank()) {
+        val pending = pendingLaunchPrompt.getAndSet(null)
+        if (pending != null) {
             serviceScope.launch(Dispatchers.Main) {
-                onUserSubmitTextMessage(pendingText)
+                onUserSubmitPrompt(
+                    promptWithDocs = pending.promptWithDocs,
+                    displayUserText = pending.displayUserText,
+                    attachments = pending.attachments,
+                    screenFrameBytes = pending.screenFrameBytes
+                )
             }
         }
         return START_STICKY
@@ -1162,6 +1225,28 @@ class JarvisConversationService : Service() {
             val memoryContext = app.memoryManager.getSystemPromptContext()
             val favSong = app.memoryManager.resolveSongQuery("my favorite song")
             com.jarvis.assistant.util.PromptGenerator.generateSystemPrompt(
+                personality = preferences.personality,
+                userName = preferences.userName,
+                assistantName = preferences.assistantName,
+                memoryContext = memoryContext,
+                favoriteSong = favSong,
+                userBirthday = preferences.userBirthday,
+                userLocation = preferences.userLocation,
+                isTorchOn = app.phoneControlManager.isTorchOn,
+                language = preferences.language,
+                isSilentExecutionMode = preferences.isSilentExecutionMode,
+                responseStyle = preferences.responseStyle,
+                isVoiceSession = true
+            )
+        }
+    }
+
+    private suspend fun generateCurrentTextSystemPrompt(): String {
+        val app = application as? JarvisApp ?: return ""
+        return withContext(Dispatchers.IO) {
+            val memoryContext = app.memoryManager.getSystemPromptContext()
+            val favSong = app.memoryManager.resolveSongQuery("my favorite song")
+            com.jarvis.assistant.util.PromptGenerator.generateTextSystemPrompt(
                 personality = preferences.personality,
                 userName = preferences.userName,
                 assistantName = preferences.assistantName,
@@ -3746,7 +3831,16 @@ class JarvisConversationService : Service() {
                 }
             }
         } else if (turnToComplete != null) {
-            app?.chatRepository?.updateAssistantResponse(turnToComplete, "", isComplete = true)
+            val existing = app?.chatRepository?.turns?.value?.firstOrNull { it.id == turnToComplete }
+            if (existing == null || existing.jarvisResponse.isBlank()) {
+                app?.chatRepository?.updateAssistantResponse(
+                    turnToComplete,
+                    "I was unable to transcribe or generate a response. Please try again.",
+                    isComplete = true
+                )
+            } else {
+                app?.chatRepository?.updateAssistantResponse(turnToComplete, existing.jarvisResponse, isComplete = true)
+            }
         }
         currentTurnAssistantText.clear()
         currentTurnUserText.clear()

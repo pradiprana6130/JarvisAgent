@@ -77,4 +77,47 @@ class AttachmentParserTest {
         assertEquals("Sample PDF content", item.extractedText)
         assertEquals(false, item.isTruncated)
     }
+
+    @Test
+    fun testExtractUserInstructionRemovesDocumentWrapper() {
+        val wrappedPrompt = """
+            [ATTACHED CONTEXT / DOCUMENT DATA]
+            The user attached 1 file(s). Use the file contents below to answer the user request.
+
+            ATTACHMENT #1: document.txt (text/plain, 500 B)
+            [START UNTRUSTED FILE CONTENT: document.txt]
+            Entire confidential internal contents of document.txt line 1
+            Entire confidential internal contents of document.txt line 2
+            [END UNTRUSTED FILE CONTENT]
+
+            USER REQUEST / INSTRUCTION:
+            summary do
+        """.trimIndent()
+
+        val extracted = AttachmentParser.extractUserInstruction(wrappedPrompt)
+        assertEquals("summary do", extracted)
+    }
+
+    @Test
+    fun testTxtFileContentIncludedExactlyOnceInModelPrompt() {
+        val item = AttachmentItem(
+            name = "notes.txt",
+            mimeType = "text/plain",
+            sizeBytes = 250L,
+            formattedSize = "250 B",
+            attachmentType = AttachmentType.DOCUMENT,
+            extractedText = "Meeting notes line 1\nMeeting notes line 2"
+        )
+        val userInstruction = "summary do"
+        val modelPrompt = AttachmentParser.buildModelPrompt(userInstruction, listOf(item))
+
+        // Document text must appear exactly once in the model prompt
+        val firstIndex = modelPrompt.indexOf("Meeting notes line 1")
+        val lastIndex = modelPrompt.lastIndexOf("Meeting notes line 1")
+        assertTrue("Content must be present", firstIndex != -1)
+        assertEquals("Content must appear exactly once", firstIndex, lastIndex)
+
+        // User instruction must appear in the model prompt
+        assertTrue("User instruction must be included", modelPrompt.contains("summary do"))
+    }
 }

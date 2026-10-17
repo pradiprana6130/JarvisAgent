@@ -231,6 +231,7 @@ class GeminiLiveWebSocket(
                         })
                     }
                 })
+                put("output_audio_transcription", JSONObject())
                 put("tools", JSONArray().put(JSONObject().apply {
                     put("functionDeclarations", JSONArray().apply {
                         // 1. open_app
@@ -849,12 +850,9 @@ class GeminiLiveWebSocket(
                             }
                             val text = part.optString("text", "")
                             val isThinkingLeak = text.startsWith("**") && (
-                                    text.contains("thinking", ignoreCase = true) ||
-                                    text.contains("crafting", ignoreCase = true) ||
-                                    text.contains("formulating", ignoreCase = true) ||
-                                    text.contains("acknowledge", ignoreCase = true) ||
-                                    text.contains("inquire", ignoreCase = true) ||
-                                    text.contains("greeting", ignoreCase = true)
+                                    text.contains("thinking process", ignoreCase = true) ||
+                                    text.contains("crafting response", ignoreCase = true) ||
+                                    text.contains("formulating response", ignoreCase = true)
                             )
                             if (text.isNotEmpty() && !isThinkingLeak && !hasOutputTranscriptionText) {
                                 listener.onAssistantTextReceived(text)

@@ -47,17 +47,25 @@ class HudChatAdapter(
             val context = binding.root.context
 
             // 1. User Message Bubble
-            if (turn.userTranscript.isNotBlank()) {
+            val hasUserContent = turn.userTranscript.isNotBlank() || !turn.attachmentName.isNullOrBlank() || !turn.attachmentThumbnailBase64.isNullOrBlank()
+            if (hasUserContent) {
                 binding.layoutUserContainer.visibility = View.VISIBLE
-                binding.tvUserText.text = turn.userTranscript
+                if (turn.userTranscript.isNotBlank()) {
+                    binding.tvUserText.visibility = View.VISIBLE
+                    binding.tvUserText.text = turn.userTranscript
+                } else {
+                    binding.tvUserText.visibility = View.GONE
+                }
                 binding.tvUserTime.text = turn.formattedTime
 
                 binding.layoutUserBubble.setOnClickListener {
-                    copyToClipboard(context, "User message", turn.userTranscript)
+                    copyToClipboard(context, "User message", turn.userTranscript.ifBlank { turn.attachmentName ?: "" })
                 }
 
                 binding.layoutUserBubble.setOnLongClickListener {
-                    onEditUserMessage?.invoke(turn.userTranscript)
+                    if (turn.userTranscript.isNotBlank()) {
+                        onEditUserMessage?.invoke(turn.userTranscript)
+                    }
                     true
                 }
             } else {
@@ -69,6 +77,7 @@ class HudChatAdapter(
                 binding.layoutJarvisContainer.visibility = View.VISIBLE
                 binding.tvJarvisText.text = turn.jarvisResponse
                 binding.tvJarvisTime.text = turn.formattedTime
+                binding.btnCopyJarvisResponse.visibility = View.VISIBLE
 
                 binding.btnCopyJarvisResponse.setOnClickListener {
                     copyToClipboard(context, "JARVIS response", turn.jarvisResponse)
@@ -79,7 +88,10 @@ class HudChatAdapter(
                     true
                 }
             } else {
-                binding.layoutJarvisContainer.visibility = View.GONE
+                binding.layoutJarvisContainer.visibility = View.VISIBLE
+                binding.tvJarvisText.text = "Thinking..."
+                binding.tvJarvisTime.text = turn.formattedTime
+                binding.btnCopyJarvisResponse.visibility = View.GONE
             }
 
             // 3. User Attachment File Pill

@@ -145,4 +145,12 @@ class SettingsAndAudioPreferencesTest {
         assertEquals(80, 80.coerceIn(0, 100))
         assertEquals(100, 150.coerceIn(0, 100))
     }
+
+    @Test
+    fun testLegacyModelConstantsAndDefaultsMigration() {
+        assertEquals("models/gemini-3.8-flash", GeminiConstants.DEFAULT_TEXT_MODEL)
+        assertEquals("models/gemini-3.8-flash", GeminiConstants.DEFAULT_VISION_MODEL)
+        assertFalse("DEFAULT_TEXT_MODEL must not contain 2.5-flash", GeminiConstants.DEFAULT_TEXT_MODEL.contains("gemini-2.5-flash"))
+        assertFalse("DEFAULT_VISION_MODEL must not contain 2.5-flash", GeminiConstants.DEFAULT_VISION_MODEL.contains("gemini-2.5-flash"))
+    }
 }

@@ -47,11 +47,19 @@ object GeminiModelManager {
     fun normalizeModelId(id: String): String {
         val trimmed = id.trim()
         if (trimmed.isEmpty()) return VERIFIED_DEFAULT_LIVE_MODEL
-        return if (trimmed.startsWith("models/")) trimmed else "models/$trimmed"
+        var clean = trimmed
+        while (clean.startsWith("models/")) {
+            clean = clean.removePrefix("models/").trim()
+        }
+        return "models/$clean"
     }
 
     fun cleanModelId(id: String): String {
-        return id.trim().removePrefix("models/")
+        var clean = id.trim()
+        while (clean.startsWith("models/")) {
+            clean = clean.removePrefix("models/").trim()
+        }
+        return clean
     }
 
     /**
@@ -69,7 +77,7 @@ object GeminiModelManager {
         if (clean.contains("embedding") || clean.contains("aqa")) {
             return false
         }
-        // Gemini 2.0, 2.5, 3.0, 3.1 Flash and Pro models are multimodal
+        // Gemini 2.0, 2.5, 3.0, 3.1, 3.8 Flash and Pro models are multimodal
         return clean.contains("flash") || clean.contains("pro") || clean.contains("gemini-2") || clean.contains("gemini-3")
     }
 
@@ -103,6 +111,11 @@ object GeminiModelManager {
         // Default seed models if cache is not yet populated
         val defaults = listOf(
             GeminiModelInfo(
+                name = GeminiConstants.MODEL_3_8_FLASH,
+                displayName = "Gemini 3.8 Flash",
+                supportedMethods = listOf("generateContent", "countTokens")
+            ),
+            GeminiModelInfo(
                 name = GeminiConstants.MODEL_2_5_FLASH_NATIVE_AUDIO,
                 displayName = "Gemini 2.5 Flash Native Audio Preview",
                 supportedMethods = listOf("bidiGenerateContent")
@@ -111,11 +124,6 @@ object GeminiModelManager {
                 name = GeminiConstants.MODEL_2_5_FLASH_LIVE,
                 displayName = "Gemini 2.5 Flash Live Preview",
                 supportedMethods = listOf("bidiGenerateContent")
-            ),
-            GeminiModelInfo(
-                name = GeminiConstants.MODEL_2_5_FLASH,
-                displayName = "Gemini 2.5 Flash",
-                supportedMethods = listOf("generateContent", "countTokens")
             ),
             GeminiModelInfo(
                 name = GeminiConstants.MODEL_3_0_FLASH,
@@ -263,20 +271,29 @@ object GeminiModelManager {
         val norm = if (!preferred.isNullOrBlank()) normalizeModelId(preferred) else null
         val models = getCachedModels()
 
-        // 1. If preferred model supports generateContent, use it
-        if (norm != null) {
-            val match = models.firstOrNull { it.name.equals(norm, ignoreCase = true) }
-            if (match != null && match.supportsGenerateContent) {
+        // Guard: Never resolve to unavailable gemini-2.5-flash for text generation
+        val cleanPreferred = norm?.let { cleanModelId(it) }
+        val effectivePreferred = if (cleanPreferred.equals("gemini-2.5-flash", ignoreCase = true)) {
+            VERIFIED_DEFAULT_TEXT_MODEL
+        } else {
+            norm
+        }
+
+        // 1. If preferred model supports generateContent, use it (excluding unavailable gemini-2.5-flash)
+        if (effectivePreferred != null) {
+            val match = models.firstOrNull { it.name.equals(effectivePreferred, ignoreCase = true) }
+            if (match != null && match.supportsGenerateContent && !match.cleanName.equals("gemini-2.5-flash", ignoreCase = true)) {
                 return match.name
             }
-            if (norm in GeminiConstants.SUPPORTED_TEXT_MODELS) {
-                return norm
+            if (effectivePreferred in GeminiConstants.SUPPORTED_TEXT_MODELS && !effectivePreferred.contains("gemini-2.5-flash")) {
+                return effectivePreferred
             }
         }
 
-        // 2. Find any cached model that supports generateContent
-        val candidate = models.firstOrNull { it.supportsGenerateContent && it.name.contains("flash") }
-            ?: models.firstOrNull { it.supportsGenerateContent }
+        // 2. Find any cached model that supports generateContent (prioritize 3.8-flash, then other flash, never 2.5-flash)
+        val candidate = models.firstOrNull { it.supportsGenerateContent && it.cleanName.contains("3.8-flash") }
+            ?: models.firstOrNull { it.supportsGenerateContent && it.name.contains("flash") && !it.cleanName.equals("gemini-2.5-flash", ignoreCase = true) }
+            ?: models.firstOrNull { it.supportsGenerateContent && !it.cleanName.equals("gemini-2.5-flash", ignoreCase = true) }
         if (candidate != null) {
             return candidate.name
         }
@@ -291,20 +308,29 @@ object GeminiModelManager {
         val norm = if (!preferred.isNullOrBlank()) normalizeModelId(preferred) else null
         val models = getCachedModels()
 
-        // 1. If preferred model supports vision, use it
-        if (norm != null) {
-            val match = models.firstOrNull { it.name.equals(norm, ignoreCase = true) }
-            if (match != null && match.supportsVision) {
+        // Guard: Never resolve to unavailable gemini-2.5-flash for vision requests
+        val cleanPreferred = norm?.let { cleanModelId(it) }
+        val effectivePreferred = if (cleanPreferred.equals("gemini-2.5-flash", ignoreCase = true)) {
+            VERIFIED_DEFAULT_VISION_MODEL
+        } else {
+            norm
+        }
+
+        // 1. If preferred model supports vision, use it (excluding unavailable gemini-2.5-flash)
+        if (effectivePreferred != null) {
+            val match = models.firstOrNull { it.name.equals(effectivePreferred, ignoreCase = true) }
+            if (match != null && match.supportsVision && !match.cleanName.equals("gemini-2.5-flash", ignoreCase = true)) {
                 return match.name
             }
-            if (norm in GeminiConstants.SUPPORTED_TEXT_MODELS && isMultimodalModel(norm)) {
-                return norm
+            if (effectivePreferred in GeminiConstants.SUPPORTED_TEXT_MODELS && isMultimodalModel(effectivePreferred) && !effectivePreferred.contains("gemini-2.5-flash")) {
+                return effectivePreferred
             }
         }
 
-        // 2. Find any cached model that supports vision
-        val candidate = models.firstOrNull { it.supportsVision && it.name.contains("flash") }
-            ?: models.firstOrNull { it.supportsVision }
+        // 2. Find any cached model that supports vision (prioritize 3.8-flash, then other flash, never 2.5-flash)
+        val candidate = models.firstOrNull { it.supportsVision && it.cleanName.contains("3.8-flash") }
+            ?: models.firstOrNull { it.supportsVision && it.name.contains("flash") && !it.cleanName.equals("gemini-2.5-flash", ignoreCase = true) }
+            ?: models.firstOrNull { it.supportsVision && !it.cleanName.equals("gemini-2.5-flash", ignoreCase = true) }
         if (candidate != null) {
             return candidate.name
         }
@@ -344,7 +370,8 @@ object GeminiModelManager {
         return input
             .replace(Regex("key=AIza[A-Za-z0-9_-]+"), "key=[REDACTED]")
             .replace(Regex("AIza[0-9A-Za-z-_]{35}"), "[REDACTED_API_KEY]")
-            .replace(Regex("Bearer\\s+[A-Za-z0-9_.-]+"), "Bearer [REDACTED]")
+            .replace(Regex("Bearer\\s+[A-Za-z0-9_.-]+", RegexOption.IGNORE_CASE), "Bearer [REDACTED]")
+            .replace(Regex("x-goog-api-key:\\s*[^\\s,]+", RegexOption.IGNORE_CASE), "x-goog-api-key: [REDACTED]")
     }
 
     fun runDiagnostics(apiKey: String, customEndpoint: String? = null): Map<String, String> {

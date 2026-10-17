@@ -299,7 +299,7 @@
                     android:id="@+id/rbModelFlash15"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="gemini-2.5-flash (Multimodal Text &amp; Vision Engine)"
+                    android:text="gemini-3.8-flash (Multimodal Text &amp; Vision Engine)"
                     android:textColor="?attr/themeTextPrimary"
                     android:textSize="13sp"
                     android:fontFamily="sans-serif-medium"

@@ -741,4 +741,38 @@ object AttachmentParser {
         sb.append(if (userText.isNotBlank()) userText else "Please inspect, analyze, and summarize the attached file(s).")
         return sb.toString()
     }
+
+    /**
+     * Extracts the clean user instruction from a prompt that may have been wrapped with
+     * untrusted attachment document context. If no document wrapper is present, returns the input prompt.
+     * Prevents dumping extracted document/TXT text into user visible chat bubbles.
+     */
+    fun extractUserInstruction(prompt: String): String {
+        val trimmed = prompt.trim()
+        if (trimmed.isEmpty()) return ""
+
+        val lower = trimmed.lowercase(Locale.ROOT)
+        val markers = listOf(
+            "user request / instruction:\n",
+            "user request / instruction:",
+            "user request:\n",
+            "user request:"
+        )
+        for (marker in markers) {
+            val idx = lower.lastIndexOf(marker)
+            if (idx != -1) {
+                val candidate = trimmed.substring(idx + marker.length).trim()
+                if (candidate.isNotBlank() && !candidate.equals("Please inspect, analyze, and summarize the attached file(s).", ignoreCase = true)) {
+                    return candidate
+                }
+            }
+        }
+
+        // If the prompt contains attachment boundaries but no custom User Request, return empty
+        if (trimmed.contains("[START UNTRUSTED FILE CONTENT") || trimmed.contains("=== ATTACHMENT #")) {
+            return ""
+        }
+
+        return trimmed
+    }
 }

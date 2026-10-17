@@ -4,6 +4,7 @@ import com.jarvis.assistant.attachment.AttachmentItem
 import com.jarvis.assistant.attachment.AttachmentParser
 import com.jarvis.assistant.attachment.AttachmentType
 import com.jarvis.assistant.data.model.GeminiConstants
+import com.jarvis.assistant.data.repository.ChatRepository
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -158,7 +159,7 @@ class GeminiModelRoutingTest {
 
     @Test
     fun testModelWithoutRequiredLiveMethodRejectedForLiveVoice() {
-        val textOnlyModel = "models/gemini-2.5-flash"
+        val textOnlyModel = "models/gemini-3.8-flash"
         val supportsBidi = GeminiModelManager.validateModelForMethod(textOnlyModel, "bidiGenerateContent")
         assertFalse("Standard REST text model must not claim bidiGenerateContent support", supportsBidi)
 
@@ -171,18 +172,23 @@ class GeminiModelRoutingTest {
     @Test
     fun testModelIdNormalizationWithAndWithoutModelsPrefix() {
         // Without prefix
-        assertEquals("models/gemini-2.5-flash", GeminiModelManager.normalizeModelId("gemini-2.5-flash"))
-        assertEquals("models/gemini-2.5-flash", GeminiModelManager.toRestPath("gemini-2.5-flash"))
-        assertEquals("gemini-2.5-flash", GeminiModelManager.cleanModelId("gemini-2.5-flash"))
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.normalizeModelId("gemini-3.8-flash"))
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.toRestPath("gemini-3.8-flash"))
+        assertEquals("gemini-3.8-flash", GeminiModelManager.cleanModelId("gemini-3.8-flash"))
 
         // With prefix
-        assertEquals("models/gemini-2.5-flash", GeminiModelManager.normalizeModelId("models/gemini-2.5-flash"))
-        assertEquals("models/gemini-2.5-flash", GeminiModelManager.toRestPath("models/gemini-2.5-flash"))
-        assertEquals("gemini-2.5-flash", GeminiModelManager.cleanModelId("models/gemini-2.5-flash"))
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.normalizeModelId("models/gemini-3.8-flash"))
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.toRestPath("models/gemini-3.8-flash"))
+        assertEquals("gemini-3.8-flash", GeminiModelManager.cleanModelId("models/gemini-3.8-flash"))
+
+        // Repeating prefix - must never form models/models/gemini-3.8-flash
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.normalizeModelId("models/models/gemini-3.8-flash"))
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.toRestPath("models/models/models/gemini-3.8-flash"))
+        assertEquals("gemini-3.8-flash", GeminiModelManager.cleanModelId("models/models/gemini-3.8-flash"))
 
         // Whitespace handling
-        assertEquals("models/gemini-2.5-flash", GeminiModelManager.normalizeModelId("  models/gemini-2.5-flash  "))
-        assertEquals("models/gemini-2.5-flash", GeminiModelManager.toRestPath("  gemini-2.5-flash  "))
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.normalizeModelId("  models/gemini-3.8-flash  "))
+        assertEquals("models/gemini-3.8-flash", GeminiModelManager.toRestPath("  gemini-3.8-flash  "))
     }
 
     @Test
@@ -196,11 +202,26 @@ class GeminiModelRoutingTest {
     }
 
     @Test
-    fun testNoStaleActiveGemini15FlashConfigurationRemains() {
+    fun testSecretSanitizationRedactsBearerAndHeaderKeys() {
+        val rawWithHeaders = "Error with Authorization: Bearer AIzaSyD-1234567890abcdefghijklmnopqrstuv and x-goog-api-key: AIzaSyD-abcdefghijklmnopqrstuv1234567890"
+        val sanitized = GeminiModelManager.sanitizeForLogging(rawWithHeaders)
+        assertFalse("Must redact Bearer token", sanitized.contains("AIzaSyD-1234567890"))
+        assertFalse("Must redact x-goog-api-key header", sanitized.contains("AIzaSyD-abcdefghij"))
+        assertTrue("Must include [REDACTED]", sanitized.contains("[REDACTED]"))
+    }
+
+    @Test
+    fun testNoStaleActiveGemini15Or25FlashConfigurationRemains() {
         assertFalse("DEFAULT_LIVE_MODEL must not be gemini-1.5-flash", GeminiConstants.DEFAULT_LIVE_MODEL.contains("gemini-1.5-flash"))
         assertFalse("DEFAULT_TEXT_MODEL must not be gemini-1.5-flash", GeminiConstants.DEFAULT_TEXT_MODEL.contains("gemini-1.5-flash"))
         assertFalse("DEFAULT_VISION_MODEL must not be gemini-1.5-flash", GeminiConstants.DEFAULT_VISION_MODEL.contains("gemini-1.5-flash"))
         assertFalse("DEFAULT_MODEL must not be gemini-1.5-flash", GeminiConstants.DEFAULT_MODEL.contains("gemini-1.5-flash"))
+
+        assertFalse("DEFAULT_TEXT_MODEL must not be gemini-2.5-flash", GeminiConstants.DEFAULT_TEXT_MODEL.contains("gemini-2.5-flash"))
+        assertFalse("DEFAULT_VISION_MODEL must not be gemini-2.5-flash", GeminiConstants.DEFAULT_VISION_MODEL.contains("gemini-2.5-flash"))
+
+        assertEquals("models/gemini-3.8-flash", GeminiConstants.DEFAULT_TEXT_MODEL)
+        assertEquals("models/gemini-3.8-flash", GeminiConstants.DEFAULT_VISION_MODEL)
 
         val resolvedLive = GeminiModelManager.resolveLiveModel()
         val resolvedText = GeminiModelManager.resolveTextModel()
@@ -209,6 +230,124 @@ class GeminiModelRoutingTest {
         assertFalse("Resolved live model must not be gemini-1.5-flash", resolvedLive.contains("gemini-1.5-flash"))
         assertFalse("Resolved text model must not be gemini-1.5-flash", resolvedText.contains("gemini-1.5-flash"))
         assertFalse("Resolved vision model must not be gemini-1.5-flash", resolvedVision.contains("gemini-1.5-flash"))
+
+        assertFalse("Resolved text model must not be gemini-2.5-flash", resolvedText.contains("gemini-2.5-flash"))
+        assertFalse("Resolved vision model must not be gemini-2.5-flash", resolvedVision.contains("gemini-2.5-flash"))
+    }
+
+    @Test
+    fun testResolveTextAndVisionModelRejectsUnavailable25Flash() {
+        val resolvedText = GeminiModelManager.resolveTextModel("gemini-2.5-flash")
+        assertEquals(GeminiConstants.DEFAULT_TEXT_MODEL, resolvedText)
+        assertFalse("Resolved text model must never be 2.5-flash", resolvedText.contains("gemini-2.5-flash"))
+
+        val resolvedTextWithPrefix = GeminiModelManager.resolveTextModel("models/gemini-2.5-flash")
+        assertEquals(GeminiConstants.DEFAULT_TEXT_MODEL, resolvedTextWithPrefix)
+
+        val resolvedVision = GeminiModelManager.resolveVisionModel("gemini-2.5-flash")
+        assertEquals(GeminiConstants.DEFAULT_VISION_MODEL, resolvedVision)
+        assertFalse("Resolved vision model must never be 2.5-flash", resolvedVision.contains("gemini-2.5-flash"))
+
+        val resolvedVisionWithPrefix = GeminiModelManager.resolveVisionModel("models/gemini-2.5-flash")
+        assertEquals(GeminiConstants.DEFAULT_VISION_MODEL, resolvedVisionWithPrefix)
+    }
+
+    @Test
+    fun testGenerateContentAndInteractionsResponseParsing() {
+        // GenerateContent standard response with thought filter
+        val genContentJson = """
+            {
+              "candidates": [
+                {
+                  "content": {
+                    "parts": [
+                      {"text": "Internal thoughts here", "thought": true},
+                      {"text": "Summary of your document"}
+                    ],
+                    "role": "model"
+                  },
+                  "finishReason": "STOP"
+                }
+              ]
+            }
+        """.trimIndent()
+        val parsedGenContent = GeminiRestClient.parseGenerateContentResponse(genContentJson)
+        assertEquals("Summary of your document", parsedGenContent)
+
+        // Interactions v1beta response schema (steps -> content -> text)
+        val interactionsV1BetaJson = """
+            {
+              "steps": [
+                {
+                  "content": [
+                    {"type": "text", "text": "Result from Interactions API"}
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+        val parsedInteractions = GeminiRestClient.parseInteractionsResponse(interactionsV1BetaJson)
+        assertEquals("Result from Interactions API", parsedInteractions)
+
+        // Interactions legacy outputs response
+        val legacyOutputsJson = """
+            {
+              "outputs": [
+                {"text": "Legacy output result"}
+              ]
+            }
+        """.trimIndent()
+        val parsedLegacy = GeminiRestClient.parseInteractionsResponse(legacyOutputsJson)
+        assertEquals("Legacy output result", parsedLegacy)
+
+        // Direct output string format
+        val directOutputJson = """
+            {
+              "output": "Direct output text"
+            }
+        """.trimIndent()
+        val parsedDirect = GeminiRestClient.parseInteractionsResponse(directOutputJson)
+        assertEquals("Direct output text", parsedDirect)
+    }
+
+    @Test
+    fun testChatRepositoryTurnDeduplicationWithinWindow() {
+        val repo = ChatRepository(preferences = null)
+        val turn1 = repo.startTurn(
+            userText = "summary do",
+            attachmentName = "notes.txt",
+            attachmentSize = "1.2 KB",
+            attachmentType = "DOCUMENT"
+        )
+        // Immediate repeat invocation (e.g. rapid wake-up or reconnection)
+        val turn2 = repo.startTurn(
+            userText = "summary do",
+            attachmentName = "notes.txt",
+            attachmentSize = "1.2 KB",
+            attachmentType = "DOCUMENT"
+        )
+        assertEquals("Immediate identical turn must be deduplicated to the same turn ID", turn1, turn2)
+        assertEquals("Chat turn list must only contain 1 turn", 1, repo.turns.value.size)
+    }
+
+    @Test
+    fun testExtractUserInstructionFromDocumentContext() {
+        val item = AttachmentItem(
+            name = "notes.txt",
+            mimeType = "text/plain",
+            sizeBytes = 1200L,
+            formattedSize = "1.2 KB",
+            attachmentType = AttachmentType.DOCUMENT,
+            extractedText = "Line 1: Meeting notes..."
+        )
+        val fullPrompt = AttachmentParser.buildModelPrompt("summary do", listOf(item))
+        assertTrue("Full prompt must contain document content for model", fullPrompt.contains("Meeting notes"))
+
+        val extractedInstruction = AttachmentParser.extractUserInstruction(fullPrompt)
+        assertEquals("summary do", extractedInstruction)
+
+        val pureInstruction = "What is the weather?"
+        assertEquals(pureInstruction, AttachmentParser.extractUserInstruction(pureInstruction))
     }
 
     @Test

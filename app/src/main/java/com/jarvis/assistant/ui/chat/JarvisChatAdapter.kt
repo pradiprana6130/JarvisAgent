@@ -62,6 +62,8 @@ class JarvisChatAdapter(
             if (turn.jarvisResponse.isNotBlank()) {
                 binding.layoutAssistantContainer.visibility = View.VISIBLE
                 binding.tvAssistantMessage.text = turn.jarvisResponse
+                binding.btnAssistantCopy.visibility = View.VISIBLE
+                binding.btnAssistantPlay.visibility = View.VISIBLE
 
                 binding.btnAssistantCopy.setOnClickListener {
                     copyToClipboard(context, "Jarvis response", turn.jarvisResponse)
@@ -71,7 +73,10 @@ class JarvisChatAdapter(
                     Toast.makeText(context, "Playing response...", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                binding.layoutAssistantContainer.visibility = View.GONE
+                binding.layoutAssistantContainer.visibility = View.VISIBLE
+                binding.tvAssistantMessage.text = "Thinking..."
+                binding.btnAssistantCopy.visibility = View.GONE
+                binding.btnAssistantPlay.visibility = View.GONE
             }
         }
 
